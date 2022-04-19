@@ -1,7 +1,0 @@
-INSERT INTO Clients VALUES (
-    NEWID(),
-    0,
-    CRYPT_GEN_RANDOM(32),
-    CRYPT_GEN_RANDOM(16)
-);
-
