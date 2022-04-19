@@ -21,7 +21,7 @@ app.delete('/', (req, res) => {
     return res.send('Received a DELETE HTTP method');
 });
 
-app.listen(process.env.PORT, () =>
+app.listen(process.env.PORT || '3000', () =>
     console.log(`Example app listening on port ${process.env.PORT}!`),
 );
 
