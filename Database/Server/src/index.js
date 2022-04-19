@@ -5,7 +5,7 @@ const app = express();
 
 app.use(cors());
 
-app.get('/', (req, res) => {
+app.get('/users', (req, res) => {
     return res.send('Received a GET HTTP method');
 });
 
