@@ -1,17 +1,54 @@
 import * as crypto from 'crypto';
+import { getLongTermSecret } from './dataConnector';
 
-export function getKdcResponse(nonce: String, user: String, requested: String, encryptedNonce: String)  {
-    const userKey = getLongTermSecret(user);
-    const requestedKey = getLongTermSecret(requested);
+export async function getKdcResponse(nonce: string, user: string, requested: string, encryptedNonce: string): Promise<string>  {
+    // get keys for alice and bob
+    const aliceKey = await getLongTermSecret(user);
+    const bobKey = await getLongTermSecret(requested);
+    const algorithm = 'aes-256-cbc';
 
-    let reqDecipher = crypto.createDecipheriv('aes-256-cbc', requestedKey.key, requestedKey.iv);
-    // let reqNonce = reqDecipher.update(Buffer.from(encryptedNonce), 'base64', 'base64');
+    const sessionKey = makeSessionKey();
+    const bobNonce = getDecryptedNonce(algorithm, bobKey, encryptedNonce);
+    const ticketToBob = formBobTicket(algorithm, bobKey, sessionKey, user, bobNonce);
+    const reply = {
+        nonce,
+        requested,
+        sessionKey,
+        ticket: ticketToBob
+    };
+    const replyJson = JSON.stringify(reply);
+    let aliceCipher = crypto.createCipheriv(algorithm, aliceKey.key, aliceKey.iv);
+    let encryptedReply = aliceCipher.update(replyJson, 'utf-8', 'base64');
+    encryptedReply += aliceCipher.final('base64');
+    return encryptedReply;
 }
 
-function getLongTermSecret(user: String): { key: Buffer, iv: Buffer } {
-    // Add in data for getting the user's key
-    
-    const key: Buffer = Buffer.from('rawkeyinBase64', 'base64');
-    const iv: Buffer = Buffer.from('rawIVinBase64', 'base64');
-    return {key, iv};
+export type KeyIv = { key: Buffer, iv: Buffer };
+
+function makeSessionKey(): KeyIv {
+    return {
+        key: crypto.randomBytes(32),
+        iv: crypto.randomBytes(16)
+    }
+}
+
+function getDecryptedNonce(algorithm: string, bobKey: KeyIv, encryptedNonce: string): string {
+    let decipher = crypto.createDecipheriv(algorithm, bobKey.key, bobKey.iv);
+    let nonce = decipher.update(encryptedNonce, 'base64', 'base64');
+    nonce += decipher.final('base64');
+    return nonce;
+}
+
+function formBobTicket(algorithm: string, bobKey: KeyIv, sessionKey: KeyIv, user: string, decryptedNonce: string): string {
+    const ticket = {
+        sessionKey,
+        requestor: user,
+        nonce: decryptedNonce
+    };
+    const ticketJson = JSON.stringify(ticket);
+
+    let bobCipher = crypto.createDecipheriv(algorithm, bobKey.key, bobKey.iv);
+    let ticketEncrypted = bobCipher.update(ticketJson, 'utf-8', 'base64');
+    ticketEncrypted += bobCipher.final('base64');
+    return ticketEncrypted;
 }
