@@ -1,10 +1,11 @@
 name = "kdc-worker"
-type = "javascript"
+type = "webpack"
 zone_id = ""
-account_id = ""
+account_id = "1ea91d84860325de03fc5aaaaa6deda2"
 route = ""
 workers_dev = true
 compatibility_date = "2022-04-16"
+webpack_config = "webpack.config.js"
 
 [build]
 command = "npm install && npm run build"

@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/b74d603e-b238-4a12-89b6-20ce7bed47c8/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/distributedkdc",
+    "appService.deploySubpath": "Database"
+}
