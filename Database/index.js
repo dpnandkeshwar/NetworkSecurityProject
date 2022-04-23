@@ -41,10 +41,21 @@ app.listen(port, () => console.log('App running on port: ' + port));
  * }
  */
 app.post('/api/users/getuser', (req, res) => {
-    let request = req.body;
+
+    let encryptedRequest = req.body;
+    request = null;
+
+    try{
+      let decipher = crypto.createDecipheriv('aes-256-cbc', ENC_KEY, IV);
+      request = decipher.update(encryptedRequest, 'base64', 'base64');
+      request += request.final('base64');
+    }
+    catch(error) {
+      console.log(error);
+    }
+
     let query = getUser(request.ID);
     query.then(function(result) {
-
       try {
         let record = result.recordset[0];
         let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
@@ -56,7 +67,7 @@ app.post('/api/users/getuser', (req, res) => {
         res.send(encrypted);
       }
       catch(error) {
-        console.error(error);
+        console.log(error);
       }
     })
 });
