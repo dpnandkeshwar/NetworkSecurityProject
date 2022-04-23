@@ -1,7 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
 const sql = require('mssql');
 const app = express()
 app.use(express.json());
+
+const ENC_KEY = Buffer.from('f1ed01c4f55def71bcc224b061d901ce2797b1d2a9a2d9f29b1b2cfd4d4fd2ac', 'hex');
+const IV = Buffer.from("9ba6c0af38bc092afdd9cf746b138de9", 'hex');
+console.log(ENC_KEY);
+console.log(IV);
+
 
 const sqlConfig = {
     user: 'dpnandkeshwar',
@@ -34,11 +41,34 @@ app.listen(port, () => console.log('App running on port: ' + port));
  * }
  */
 app.post('/api/users/getuser', (req, res) => {
-    let request = req.body;
+
+    let encryptedRequest = req.body;
+    request = null;
+
+    try{
+      let decipher = crypto.createDecipheriv('aes-256-cbc', ENC_KEY, IV);
+      request = decipher.update(encryptedRequest, 'base64', 'base64');
+      request += request.final('base64');
+    }
+    catch(error) {
+      console.log(error);
+    }
+
     let query = getUser(request.ID);
     query.then(function(result) {
-      let record = result.recordset[0];
-        res.send(JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV}));
+      try {
+        let record = result.recordset[0];
+        let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
+
+        let cipher = crypto.createCipheriv('aes-256-cbc', ENC_KEY, IV);
+        let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
+
+        res.send(encrypted);
+      }
+      catch(error) {
+        console.log(error);
+      }
     })
 });
 
