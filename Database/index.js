@@ -33,16 +33,37 @@ app.listen(port, () => console.log('App running on port: ' + port));
  *   body: { 'ID' : <uuid>}
  * }
  */
-app.post('/api/users', (req, res) => {
+app.post('/api/users/getuser', (req, res) => {
     let request = req.body;
     let query = getUser(request.ID);
     query.then(function(result) {
-        res.send(result);
+      let record = result.recordset[0];
+        res.send(JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV}));
     })
 });
 
-async function getUser (ID) {
+app.put('/api/users/updateblocks'), (req, res) => {
+  let request = req.body;
+  let query = updateBlocks(request.ID, request.blockNum);
+  query.then(function(result) {
+    if(result.rowsAffected[0] == 1)
+      res.send(JSON.stringify({ success: 'true'}));
+    else
+      res.send(JSON.stringify({ success: 'false'}));
+  })
+}
+
+async function getUser(ID) {
     let pool = await sql.connect(sqlConfig);
     let result = await pool.request().input('id', sql.UniqueIdentifier, ID).query('SELECT * FROM Clients where ID = @id');
     return result;
+}
+
+// Doesn't work needs to update blocks not reset 
+async function updateBlocks(ID, blockNum) {
+  let pool = await sql.connect(sqlConfig);
+  let result = pool.request();
+  result.input('id', sql.UniqueIdentifier, ID);
+  result.input('blockNum', sql.Int, blockNum);
+  await result.query('UPDATE [dbo].[Clients] set blocksEncrypted = @blockNum WHERE ID = @id');
 }
