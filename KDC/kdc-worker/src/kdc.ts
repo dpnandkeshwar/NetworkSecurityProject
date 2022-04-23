@@ -12,7 +12,7 @@ export async function getKdcResponse(nonce: string, user: string, requested: str
     const ticketToBob = formBobTicket(algorithm, bobKey, sessionKey, user, bobNonce);
     const reply = {
         nonce,
-        requested,
+        bob: requested,
         sessionKey,
         ticket: ticketToBob
     };
@@ -42,12 +42,12 @@ function getDecryptedNonce(algorithm: string, bobKey: KeyIv, encryptedNonce: str
 function formBobTicket(algorithm: string, bobKey: KeyIv, sessionKey: KeyIv, user: string, decryptedNonce: string): string {
     const ticket = {
         sessionKey,
-        requestor: user,
+        alice: user,
         nonce: decryptedNonce
     };
     const ticketJson = JSON.stringify(ticket);
 
-    let bobCipher = crypto.createDecipheriv(algorithm, bobKey.key, bobKey.iv);
+    let bobCipher = crypto.createCipheriv(algorithm, bobKey.key, bobKey.iv);
     let ticketEncrypted = bobCipher.update(ticketJson, 'utf-8', 'base64');
     ticketEncrypted += bobCipher.final('base64');
     return ticketEncrypted;
