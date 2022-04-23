@@ -17,5 +17,8 @@
     ]
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist", "test"],
+  "files": [
+    "./node_modules/@types/node/index.d.ts"
+  ]
 }
