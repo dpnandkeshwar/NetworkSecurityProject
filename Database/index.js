@@ -4,9 +4,10 @@ const sql = require('mssql');
 const app = express()
 app.use(express.json());
 
-const ENC_KEY = "1819af83f683fcbc21e17e404d77581a37758d248d247a6db87dfd70322dc4b5";
-const IV = "7dfb32a16ad4033a9160a060d3a106d3";
-
+const ENC_KEY = Buffer.from('f1ed01c4f55def71bcc224b061d901ce2797b1d2a9a2d9f29b1b2cfd4d4fd2ac', 'hex');
+const IV = Buffer.from("9ba6c0af38bc092afdd9cf746b138de9", 'hex');
+console.log(ENC_KEY);
+console.log(IV);
 
 
 const sqlConfig = {
@@ -44,14 +45,19 @@ app.post('/api/users/getuser', (req, res) => {
     let query = getUser(request.ID);
     query.then(function(result) {
 
-      let record = result.recordset[0];
-      let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
+      try {
+        let record = result.recordset[0];
+        let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
 
-      let cipher = crypto.createCipheriv('aes-256-cbc', ENC_KEY, IV);
-      let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
-      encrypted += cipher.final('base64');
+        let cipher = crypto.createCipheriv('aes-256-cbc', ENC_KEY, IV);
+        let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
 
-      res.send(jsonReturn);
+        res.send(jsonReturn);
+      }
+      catch(error) {
+        console.error(error);
+      }
     })
 });
 
