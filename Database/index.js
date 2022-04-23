@@ -72,6 +72,17 @@ app.post('/api/users/getuser', (req, res) => {
     })
 });
 
+app.post('/apiold/users/getuser', (req, res) => {
+
+  let request = req.body;
+  let query = getUser(request.ID);
+  query.then(function(result) {
+    let record = result.recordset[0];
+    let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
+    res.send(jsonReturn);
+  })
+});
+
 app.put('/api/users/updateblocks'), (req, res) => {
   let request = req.body;
   let query = updateBlocks(request.ID, request.blockNum);
