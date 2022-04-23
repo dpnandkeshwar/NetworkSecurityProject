@@ -36,8 +36,5 @@
     "typescript": "^4.3.2",
     "webpack": "^4.44.2",
     "webpack-cli": "^4.7.0"
-  },
-  "dependencies": {
-    "node-fetch": "^3.2.3"
   }
 }
