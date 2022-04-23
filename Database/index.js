@@ -1,7 +1,13 @@
 const express = require('express');
+const crypto = require('crypto');
 const sql = require('mssql');
 const app = express()
 app.use(express.json());
+
+const ENC_KEY = "1819af83f683fcbc21e17e404d77581a37758d248d247a6db87dfd70322dc4b5";
+const IV = "7dfb32a16ad4033a9160a060d3a106d3";
+
+
 
 const sqlConfig = {
     user: 'dpnandkeshwar',
@@ -37,8 +43,15 @@ app.post('/api/users/getuser', (req, res) => {
     let request = req.body;
     let query = getUser(request.ID);
     query.then(function(result) {
+
       let record = result.recordset[0];
-        res.send(JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV}));
+      let jsonReturn = JSON.stringify({ ID : record.ID , Key : record.KeyBytes, IV : record.IV});
+
+      let cipher = crypto.createCipheriv('aes-256-cbc', ENC_KEY, IV);
+      let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
+      encrypted += cipher.final('base64');
+
+      res.send(jsonReturn);
     })
 });
 
