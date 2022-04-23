@@ -53,7 +53,7 @@ app.post('/api/users/getuser', (req, res) => {
         let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
         encrypted += cipher.final('base64');
 
-        res.send(jsonReturn);
+        res.send(encrypted);
       }
       catch(error) {
         console.error(error);
