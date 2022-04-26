@@ -42,19 +42,22 @@ app.listen(port, () => console.log('App running on port: ' + port));
  */
 app.post('/api/users/getuser', (req, res) => {
 
-    let encryptedRequest = req.body;
-    request = null;
+    let encryptedObject = req.body;
+    let encryptedData = encryptedObject.data;
+    let decryptedData = null;
 
     try{
       let decipher = crypto.createDecipheriv('aes-256-cbc', ENC_KEY, IV);
-      request = decipher.update(encryptedRequest, 'base64', 'base64');
-      request += request.final('base64');
+      decryptedData = decipher.update(encryptedData, 'base64', 'base64');
+      decryptedData += decryptedData.final('base64');
     }
     catch(error) {
       console.log(error);
     }
 
-    let query = getUser(request.ID);
+    JSONrequest = JSON.parse(decryptedData);
+
+    let query = getUser(JSONrequest.ID);
     query.then(function(result) {
       try {
         let record = result.recordset[0];
@@ -64,7 +67,7 @@ app.post('/api/users/getuser', (req, res) => {
         let encrypted = cipher.update(jsonReturn, 'utf8', 'base64');
         encrypted += cipher.final('base64');
 
-        res.send(encrypted);
+        res.send(JSON.stringify({ data : encrypted}));
       }
       catch(error) {
         console.log(error);
@@ -73,7 +76,6 @@ app.post('/api/users/getuser', (req, res) => {
 });
 
 app.post('/apiold/users/getuser', (req, res) => {
-
   let request = req.body;
   let query = getUser(request.ID);
   query.then(function(result) {
