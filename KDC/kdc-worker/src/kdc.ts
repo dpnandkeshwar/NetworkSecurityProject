@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { getLongTermSecret } from './dataConnector';
 
-export async function getKdcResponse(nonce: string, user: string, requested: string, encryptedNonce: string): Promise<string>  {
+export async function getKdcResponse(nonce: string, user: string, requested: string, encryptedNonce: string): Promise<{data: string}>  {
     // get keys for alice and bob
     const aliceKey = await getLongTermSecret(user);
     const bobKey = await getLongTermSecret(requested);
@@ -20,22 +20,25 @@ export async function getKdcResponse(nonce: string, user: string, requested: str
     let aliceCipher = crypto.createCipheriv(algorithm, aliceKey.key, aliceKey.iv);
     let encryptedReply = aliceCipher.update(replyJson, 'utf-8', 'base64');
     encryptedReply += aliceCipher.final('base64');
-    return encryptedReply;
+    return { data: encryptedReply };
 }
 
 export type KeyIv = { key: Buffer, iv: Buffer };
 
 function makeSessionKey(): KeyIv {
-    return {
-        key: crypto.randomBytes(32),
-        iv: crypto.randomBytes(16)
+    const sessionKey = {
+        key: Buffer.from(crypto.randomBytes(32)),
+        iv: Buffer.from(crypto.randomBytes(16))
     }
+    console.debug("\x1b[34msession key\x1b[0m", JSON.stringify(sessionKey));
+    return sessionKey;
 }
 
 function getDecryptedNonce(algorithm: string, bobKey: KeyIv, encryptedNonce: string): string {
     let decipher = crypto.createDecipheriv(algorithm, bobKey.key, bobKey.iv);
     let nonce = decipher.update(encryptedNonce, 'base64', 'base64');
     nonce += decipher.final('base64');
+    console.debug("\x1b[34mdecrypted nonce (base64):\x1b[0m", nonce);
     return nonce;
 }
 
@@ -46,6 +49,7 @@ function formBobTicket(algorithm: string, bobKey: KeyIv, sessionKey: KeyIv, user
         nonce: decryptedNonce
     };
     const ticketJson = JSON.stringify(ticket);
+    console.debug("\x1b[34mticket\x1b[0m", ticketJson);
 
     let bobCipher = crypto.createCipheriv(algorithm, bobKey.key, bobKey.iv);
     let ticketEncrypted = bobCipher.update(ticketJson, 'utf-8', 'base64');
