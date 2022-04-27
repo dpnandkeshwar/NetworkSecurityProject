@@ -41,6 +41,26 @@ function getDecryptedJson(encrypted : string){
     }
 }
 
+function aliceAndBob(kdcResponse : any){
+    //first extract the session key
+    const keyBytes = Buffer.from(kdcResponse.sessionKey.key.data);
+    const ivBytes = Buffer.from(kdcResponse.sessionKey.iv.data);
+    const algorithm = 'aes-256-cbc';
+    let aliceCipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+
+    //create kAB{n2}
+    const n2 = crypto.randomBytes(8).toString('base64');
+    let encryptedReply = aliceCipher.update(n2.toString(), 'utf-8', 'base64');
+    encryptedReply += aliceCipher.final('base64');
+
+    console.log("----Alice and Bob communication-------");
+    console.log("N2 nonce created: " + n2);
+    console.log("Encrypted N2: " + encryptedReply);
+    
+    const toBob = {"n2" : encryptedReply, "ticket" : kdcResponse.ticket};
+    console.log("Sending to Bob: " + JSON.stringify(toBob));
+}
+
 const aliceId = "DF72A441-9C8B-484F-A514-35B207DB99FE";
 const bobId = "e4b03425-fb42-40d7-8d97-431bd55597d7";
 const nB = 'UFO6tb28ok2lX58T5/bvmg==';
@@ -62,6 +82,8 @@ console.log(toKDC);
     console.log("Nonce received from KDC: " + kdcResponse.nonce);
     console.log("Correct nonce: " + n1);
     assert(n1 == kdcResponse.nonce);
+
+    aliceAndBob(kdcResponse);
     
 })().catch(e => {
     console.log("Failed contact to KDC");
