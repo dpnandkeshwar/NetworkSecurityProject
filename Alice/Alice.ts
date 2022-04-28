@@ -71,12 +71,12 @@ function aliceAndBob(kdcResponse : any){
     client.on('data',function(data){
         console.log("Received from Bob: " + data.toString());
         const fromBob = JSON.parse(data.toString());
-        let decipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+        let decipher = crypto.createDecipheriv(algorithm, keyBytes, ivBytes);
         let decryptedN2_1 = decipher.update(fromBob.n2_1, 'base64', 'base64');
         decryptedN2_1 += decipher.final('base64'); 
         console.log("Decrypted n2 - 1: " + decryptedN2_1);
 
-        decipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+        decipher = crypto.createDecipheriv(algorithm, keyBytes, ivBytes);
         let decryptedN3 = decipher.update(fromBob.n3, 'base64', 'base64');
         decryptedN3 += decipher.final('base64'); 
         console.log("Decrypted n3: " + decryptedN3);

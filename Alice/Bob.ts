@@ -68,13 +68,13 @@ let server = net.createServer()
             console.log("computed n2 - 1 displayed as base64 string: " + n2_1 );
 
             let bobCipher = crypto.createCipheriv(algorithm, sessionKeyBytes, sessionIvBytes);
-            let encryptedN2_1 = bobCipher.update(n2_1, 'utf-8', 'base64');
+            let encryptedN2_1 = bobCipher.update(n2_1, 'base64', 'base64');
             encryptedN2_1 += bobCipher.final('base64');
             //construct message with n2 -1 and n3
 
             const n3 = crypto.randomBytes(8).toString('base64');
             bobCipher = crypto.createCipheriv(algorithm, sessionKeyBytes, sessionIvBytes);
-            let encryptedN3 = bobCipher.update(n3, 'utf-8', 'base64');
+            let encryptedN3 = bobCipher.update(n3, 'base64', 'base64');
             encryptedN3 += bobCipher.final('base64');
 
             console.log("created nonce n3 displayed as base64 string: " + n3 );
