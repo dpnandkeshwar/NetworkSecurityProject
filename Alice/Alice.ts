@@ -1,9 +1,13 @@
 import { assert } from 'console';
 import * as crypto from 'crypto';
 import fetch from 'node-fetch';
+import * as net from 'net';
+
 
 // type AliceToKDC = { n1: string, alice: string, bob : string,  nB : string};
 type EncryptedResponse = {data : string}
+
+ 
 
 async function request(toKDC : string, url : string) : Promise<string> {    
     const response = await fetch(url, {
@@ -50,7 +54,7 @@ function aliceAndBob(kdcResponse : any){
 
     //create kAB{n2}
     const n2 = crypto.randomBytes(8).toString('base64');
-    let encryptedReply = aliceCipher.update(n2.toString(), 'utf-8', 'base64');
+    let encryptedReply = aliceCipher.update(n2, 'base64', 'base64');
     encryptedReply += aliceCipher.final('base64');
 
     console.log("----Alice and Bob communication-------");
@@ -59,32 +63,67 @@ function aliceAndBob(kdcResponse : any){
     
     const toBob = {"n2" : encryptedReply, "ticket" : kdcResponse.ticket};
     console.log("Sending to Bob: " + JSON.stringify(toBob));
+
+    var client = net.connect({host: '127.0.0.1', port: 3000}, function() {
+        client.write(JSON.stringify(toBob));
+    });
+
+    client.on('data',function(data){
+        console.log("Received from Bob: " + data.toString());
+        const fromBob = JSON.parse(data.toString());
+        let decipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+        let decryptedN2_1 = decipher.update(fromBob.n2_1, 'base64', 'base64');
+        decryptedN2_1 += decipher.final('base64'); 
+        console.log("Decrypted n2 - 1: " + decryptedN2_1);
+
+        decipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+        let decryptedN3 = decipher.update(fromBob.n3, 'base64', 'base64');
+        decryptedN3 += decipher.final('base64'); 
+        console.log("Decrypted n3: " + decryptedN3);
+
+    });
 }
 
 const aliceId = "DF72A441-9C8B-484F-A514-35B207DB99FE";
 const bobId = "e4b03425-fb42-40d7-8d97-431bd55597d7";
-const nB = 'UFO6tb28ok2lX58T5/bvmg==';
+
+
+
 let n1 = crypto.randomBytes(8).toString('base64');
+let nB = '';
 
-let toKDC = JSON.stringify({n1, alice : aliceId, bob : bobId, nB});
-
-console.log(toKDC);
-
-(async () => {
-    // const encrypted = await request(toKDC, "http://localhost:8787");
-
-    const encrypted = await request(toKDC, "http://127.0.0.1:8787");
-    console.log(encrypted);
-
-    const kdcResponse = JSON.parse(getDecryptedJson(encrypted));
-
-    console.log("----Verify the nonce-------");
-    console.log("Nonce received from KDC: " + kdcResponse.nonce);
-    console.log("Correct nonce: " + n1);
-    assert(n1 == kdcResponse.nonce);
-
-    aliceAndBob(kdcResponse);
-    
-})().catch(e => {
-    console.log("Failed contact to KDC");
+var client = net.connect({host: '127.0.0.1', port: 3000}, function() {
+    console.log('Asking bob for nonce');  
+    client.write("I want to talk");
 });
+
+client.on('data',function(data){
+    nB = JSON.parse(data.toString()).nB;
+    let toKDC = JSON.stringify({n1, alice : aliceId, bob : bobId, nB});
+
+    console.log(toKDC);
+
+    (async () => {
+        // const encrypted = await request(toKDC, "http://localhost:8787");
+
+    
+        const encrypted = await request(toKDC, "http://127.0.0.1:8787");
+        console.log(encrypted);
+
+        const kdcResponse = JSON.parse(getDecryptedJson(encrypted));
+
+        console.log("----Verify the nonce-------");
+        console.log("Nonce received from KDC: " + kdcResponse.nonce);
+        console.log("Correct nonce: " + n1);
+        assert(n1 == kdcResponse.nonce);
+
+        aliceAndBob(kdcResponse);
+        
+    })().catch(e => {
+        console.log("Failed contact to KDC");
+    });
+});
+
+
+
+
