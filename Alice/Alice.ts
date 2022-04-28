@@ -45,6 +45,30 @@ function getDecryptedJson(encrypted : string){
     }
 }
 
+function sendLastMessageToBob(n3 : string, keyBytes : Buffer, ivBytes : Buffer){
+    const algorithm = 'aes-256-cbc';
+
+    //first compute n3 - 1 to send to Bob
+    const buff = Buffer.from(n3, 'base64');
+    const n3Int = buff.readBigInt64BE(0) - BigInt(1);
+    const newBuff = Buffer.allocUnsafe(8);
+    newBuff.writeBigInt64BE(n3Int, 0);
+    const n3_1 = newBuff.toString('base64');
+    console.log(`Computed n3-1: ${n3_1}` );
+
+    //encrypt n3_1 
+    let cipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+    let encryptedN3_1 = cipher.update(n3, 'base64', 'base64');
+    encryptedN3_1 += cipher.final('base64');
+    console.log(`Encrypted n3-1: ${encryptedN3_1}` );
+
+
+    //send it to Bob
+    var client = net.connect({host: '127.0.0.1', port: 3000}, function() {
+        client.write(encryptedN3_1);
+    });
+
+}
 function aliceAndBob(kdcResponse : any){
     //first extract the session key
     const keyBytes = Buffer.from(kdcResponse.sessionKey.key.data);
@@ -74,13 +98,22 @@ function aliceAndBob(kdcResponse : any){
         let decipher = crypto.createDecipheriv(algorithm, keyBytes, ivBytes);
         let decryptedN2_1 = decipher.update(fromBob.n2_1, 'base64', 'base64');
         decryptedN2_1 += decipher.final('base64'); 
-        console.log("Decrypted n2 - 1: " + decryptedN2_1);
+        console.log("Decrypted n2 - 1 received from Bob: " + decryptedN2_1);
+
+        //compute the expected n2 - 1
+        const buff = Buffer.from(n2, 'base64');
+        const n2Int = buff.readBigInt64BE(0) - BigInt(1);
+        const newBuff = Buffer.allocUnsafe(8);
+        newBuff.writeBigInt64BE(n2Int, 0);
+        const n2_1 = newBuff.toString('base64');
+        console.log("Expected n2 - 1: " + n2_1 );
 
         decipher = crypto.createDecipheriv(algorithm, keyBytes, ivBytes);
         let decryptedN3 = decipher.update(fromBob.n3, 'base64', 'base64');
         decryptedN3 += decipher.final('base64'); 
-        console.log("Decrypted n3: " + decryptedN3);
+        console.log(`Decrypted n3: ${decryptedN3}`);
 
+        sendLastMessageToBob(decryptedN3, keyBytes, ivBytes);
     });
 }
 
