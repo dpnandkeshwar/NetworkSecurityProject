@@ -148,8 +148,8 @@ let nB = '';
 
 var client = net.connect({host: '127.0.0.1', port: 3000}, function() {
     // console.log('Asking bob for nonce');
-    logTitledString('REQUESTING BOB\'S NONCE', 'I want to talk');
-    client.write("I want to talk");
+    logTitledString('REQUESTING BOB\'S NONCE', aliceId);
+    client.write(aliceId);
 });
 
 client.on('data',function(data){
@@ -163,7 +163,7 @@ client.on('data',function(data){
         // const encrypted = await request(toKDC, "http://localhost:8787");
 
     
-        const encrypted = await request(toKDC, "http://127.0.0.1:8787");
+        const encrypted = await request(toKDC, " https://kdc-worker.architmenon-mnn.workers.dev");
         // console.log(encrypted);
         logTitledString('ENCRYPTED RESPONSE FROM KDC', encrypted);
 
