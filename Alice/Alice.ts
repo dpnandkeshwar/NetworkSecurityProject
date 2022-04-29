@@ -140,7 +140,7 @@ client.on('data',function(data){
         // const encrypted = await request(toKDC, "http://localhost:8787");
 
     
-        const encrypted = await request(toKDC, "http://127.0.0.1:8787");
+        const encrypted = await request(toKDC, " https://kdc-worker.architmenon-mnn.workers.dev");
         console.log(encrypted);
 
         const kdcResponse = JSON.parse(getDecryptedJson(encrypted));
