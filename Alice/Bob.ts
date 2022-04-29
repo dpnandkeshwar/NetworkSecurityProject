@@ -14,6 +14,7 @@ let messageCount = 0;
 const keyBytes = Buffer.from([78,245,194,90,252,102,103,133,187,206,169,71,5,241,58,116,16,54,38,197,234,147,61,179,85,227,172,153,84,237,84,100]);
 const ivBytes = Buffer.from( [163,73,171,188,125,180,71,194,181,240,50,165,60,219,166,216]);
 const algorithm = 'aes-256-cbc';
+let idFromAlice = "";
 
 let server = net.createServer()
 .listen(PORT, IP, BACKLOG)
@@ -28,6 +29,8 @@ let server = net.createServer()
             encryptedReply += bobCipher.final('base64');
             
             console.log("----Alice and Bob communication-------");
+            idFromAlice = request;
+            console.log("Request from id: " + idFromAlice);
             console.log("nB nonce created: " + nbBytes.toString('base64'));
             console.log("Encrypted nB: " + encryptedReply);
                 
@@ -51,6 +54,8 @@ let server = net.createServer()
             console.log("Bob ticket: " + ticketString);
             const ticket = JSON.parse(ticketString);
 
+            console.log("Alice ID in ticket = " + ticket.alice);
+            console.log("ID expected from: " + idFromAlice);
             const encryptedNB = ticket.nonce;
             console.log("nB extracted from ticket: " + encryptedNB);
 

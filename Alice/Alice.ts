@@ -127,7 +127,7 @@ let nB = '';
 
 var client = net.connect({host: '127.0.0.1', port: 3000}, function() {
     console.log('Asking bob for nonce');  
-    client.write("I want to talk");
+    client.write(aliceId);
 });
 
 client.on('data',function(data){
