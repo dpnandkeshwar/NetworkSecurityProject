@@ -51180,6 +51180,22 @@ module.exports = function(module) {
 
 /***/ }),
 
+/***/ "./src/constants.ts":
+/*!**************************!*\
+  !*** ./src/constants.ts ***!
+  \**************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.algorithm = void 0;
+exports.algorithm = 'aes-256-cbc';
+
+
+/***/ }),
+
 /***/ "./src/dataConnector.ts":
 /*!******************************!*\
   !*** ./src/dataConnector.ts ***!
@@ -51189,17 +51205,52 @@ module.exports = function(module) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(Buffer) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getLongTermSecret = void 0;
+const crypto = __importStar(__webpack_require__(/*! crypto */ "../../../../../../.cache/.wrangler/wranglerjs-1.19.11/node_modules/crypto-browserify/index.js"));
+const constants_1 = __webpack_require__(/*! ./constants */ "./src/constants.ts");
+const outputUtil_1 = __webpack_require__(/*! ./outputUtil */ "./src/outputUtil.ts");
 async function getLongTermSecret(user) {
+    const ENC_KEY = Buffer.from('f1ed01c4f55def71bcc224b061d901ce2797b1d2a9a2d9f29b1b2cfd4d4fd2ac', 'hex');
+    const IV = Buffer.from("9ba6c0af38bc092afdd9cf746b138de9", 'hex');
     const body = { ID: user };
+    const bodyJson = JSON.stringify(body);
+    let dataCipher = crypto.createCipheriv(constants_1.algorithm, ENC_KEY, IV);
+    let encryptedBody = dataCipher.update(bodyJson, 'utf-8', 'base64');
+    encryptedBody += dataCipher.final('base64');
+    const wrappedData = { data: encryptedBody };
+    outputUtil_1.logTitledObject('DATABASE REQUEST OBJECT', wrappedData);
     try {
-        const response = await fetch('https://distributedkdc.azurewebsites.net/apiold/users/getuser', {
+        const response = await fetch('https://distributedkdc.azurewebsites.net/api/users/getuser', {
             method: 'POST',
-            body: JSON.stringify(body),
+            body: JSON.stringify(wrappedData),
             headers: { 'Content-Type': 'application/json' }
         });
-        const responseObj = await response.json();
+        // const responseObj = await response.json<UserData>();
+        const responseObjWrapped = await response.json();
+        let dataDecipher = crypto.createDecipheriv(constants_1.algorithm, ENC_KEY, IV);
+        let decryptedBody = dataDecipher.update(responseObjWrapped.data, 'base64', 'utf-8');
+        decryptedBody += dataDecipher.final('utf-8');
+        const responseObj = JSON.parse(decryptedBody);
         const returnObj = {
             key: Buffer.from(responseObj.Key.data),
             iv: Buffer.from(responseObj.IV.data)
@@ -51230,12 +51281,15 @@ exports.getLongTermSecret = getLongTermSecret;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleRequest = void 0;
 const kdc_1 = __webpack_require__(/*! ./kdc */ "./src/kdc.ts");
+const outputUtil_1 = __webpack_require__(/*! ./outputUtil */ "./src/outputUtil.ts");
 async function handleRequest(request) {
     const body = await request.json();
-    console.log("\x1b[34mincoming request\x1b[0m", JSON.stringify(body));
+    // console.log("\x1b[34mINCOMING REQUEST\x1b[0m", `\n${JSON.stringify(body, undefined, 2)}`);
+    outputUtil_1.logTitledObject('INCOMING DATA', body);
     const kdcResponse = await kdc_1.getKdcResponse(body.n1, body.alice, body.bob, body.nB);
     const responseJson = JSON.stringify(kdcResponse);
-    console.log("\x1b[34moutgoing data\x1b[0m", responseJson);
+    // console.log("\x1b[34mOUTGOING DATA\x1b[0m", `\n${JSON.stringify(JSON.parse(responseJson), undefined, 2)}`);
+    outputUtil_1.logTitledJson('OUTGOING DATA', responseJson);
     return new Response(responseJson);
 }
 exports.handleRequest = handleRequest;
@@ -51292,23 +51346,34 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getKdcResponse = void 0;
 const crypto = __importStar(__webpack_require__(/*! crypto */ "../../../../../../.cache/.wrangler/wranglerjs-1.19.11/node_modules/crypto-browserify/index.js"));
+const constants_1 = __webpack_require__(/*! ./constants */ "./src/constants.ts");
 const dataConnector_1 = __webpack_require__(/*! ./dataConnector */ "./src/dataConnector.ts");
+const outputUtil_1 = __webpack_require__(/*! ./outputUtil */ "./src/outputUtil.ts");
 async function getKdcResponse(nonce, user, requested, encryptedNonce) {
     // get keys for alice and bob
     const aliceKey = await dataConnector_1.getLongTermSecret(user);
     const bobKey = await dataConnector_1.getLongTermSecret(requested);
-    const algorithm = 'aes-256-cbc';
     const sessionKey = makeSessionKey();
-    const bobNonce = getDecryptedNonce(algorithm, bobKey, encryptedNonce);
-    const ticketToBob = formBobTicket(algorithm, bobKey, sessionKey, user, bobNonce);
+    const bobNonce = getDecryptedNonce(constants_1.algorithm, bobKey, encryptedNonce);
+    const ticketToBob = formBobTicket(constants_1.algorithm, bobKey, sessionKey, user, bobNonce);
     const reply = {
         nonce,
         bob: requested,
         sessionKey,
         ticket: ticketToBob
     };
+    const cleanReply = {
+        nonce,
+        bob: requested,
+        sessionKey: {
+            key: sessionKey.key.toString('hex'),
+            iv: sessionKey.iv.toString('hex')
+        },
+        ticket: ticketToBob
+    };
+    outputUtil_1.logTitledObject('REPLY (unencrypted)', cleanReply);
     const replyJson = JSON.stringify(reply);
-    let aliceCipher = crypto.createCipheriv(algorithm, aliceKey.key, aliceKey.iv);
+    let aliceCipher = crypto.createCipheriv(constants_1.algorithm, aliceKey.key, aliceKey.iv);
     let encryptedReply = aliceCipher.update(replyJson, 'utf-8', 'base64');
     encryptedReply += aliceCipher.final('base64');
     return { data: encryptedReply };
@@ -51319,14 +51384,20 @@ function makeSessionKey() {
         key: Buffer.from(crypto.randomBytes(32)),
         iv: Buffer.from(crypto.randomBytes(16))
     };
-    console.debug("\x1b[34msession key\x1b[0m", JSON.stringify(sessionKey));
+    // console.debug("\x1b[34msession key\x1b[0m", JSON.stringify(sessionKey));
+    const cleanSessionKey = {
+        key: sessionKey.key.toString('hex'),
+        iv: sessionKey.iv.toString('hex')
+    };
+    outputUtil_1.logTitledObject('SESSION KEY', cleanSessionKey);
     return sessionKey;
 }
 function getDecryptedNonce(algorithm, bobKey, encryptedNonce) {
     let decipher = crypto.createDecipheriv(algorithm, bobKey.key, bobKey.iv);
     let nonce = decipher.update(encryptedNonce, 'base64', 'base64');
     nonce += decipher.final('base64');
-    console.debug("\x1b[34mdecrypted nonce (base64):\x1b[0m", nonce);
+    // console.debug("\x1b[34mdecrypted nonce (base64):\x1b[0m", nonce);
+    outputUtil_1.logTitledString('DECRYPTED NONCE (base64)', nonce);
     return nonce;
 }
 function formBobTicket(algorithm, bobKey, sessionKey, user, decryptedNonce) {
@@ -51336,14 +51407,51 @@ function formBobTicket(algorithm, bobKey, sessionKey, user, decryptedNonce) {
         nonce: decryptedNonce
     };
     const ticketJson = JSON.stringify(ticket);
-    console.debug("\x1b[34mticket\x1b[0m", ticketJson);
+    // console.debug("\x1b[34mticket\x1b[0m", ticketJson);
+    const cleanTicket = {
+        sessionKey: {
+            key: sessionKey.key.toString('hex'),
+            iv: sessionKey.iv.toString('hex')
+        },
+        alice: user,
+        nonce: decryptedNonce
+    };
+    outputUtil_1.logTitledObject('TICKET (unencrypted)', cleanTicket);
     let bobCipher = crypto.createCipheriv(algorithm, bobKey.key, bobKey.iv);
     let ticketEncrypted = bobCipher.update(ticketJson, 'utf-8', 'base64');
     ticketEncrypted += bobCipher.final('base64');
+    outputUtil_1.logTitledString('TICKET (encrypted)', ticketEncrypted);
     return ticketEncrypted;
 }
 
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../../../../../.cache/.wrangler/wranglerjs-1.19.11/node_modules/buffer/index.js */ "../../../../../../.cache/.wrangler/wranglerjs-1.19.11/node_modules/buffer/index.js").Buffer))
+
+/***/ }),
+
+/***/ "./src/outputUtil.ts":
+/*!***************************!*\
+  !*** ./src/outputUtil.ts ***!
+  \***************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.logTitledString = exports.logTitledObject = exports.logTitledJson = void 0;
+function logTitledJson(name, dataJson) {
+    console.log(`\x1b[34m${name}\x1b[0m\n${JSON.stringify(JSON.parse(dataJson), undefined, 2)}`);
+}
+exports.logTitledJson = logTitledJson;
+function logTitledObject(name, data) {
+    console.log(`\x1b[34m${name}\x1b[0m\n${JSON.stringify(data, undefined, 2)}`);
+}
+exports.logTitledObject = logTitledObject;
+function logTitledString(name, data) {
+    console.log(`\x1b[34m${name}\x1b[0m\n${data}`);
+}
+exports.logTitledString = logTitledString;
+
 
 /***/ }),
 
